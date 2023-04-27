@@ -2,7 +2,6 @@ FROM openresty/openresty:1.21.4.1-6-bionic
 
 
 ADD nginx /usr/local/bin/nginx/
-ADD consul_template /usr/local/bin/consul_template/
 ADD lua/auth /usr/local/openresty/lualib/auth
 ADD lua/http /usr/local/openresty/lualib/resty
 ADD supervisor/supervisord.conf /etc/
