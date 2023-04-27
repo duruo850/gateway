@@ -9,6 +9,7 @@ ADD cicd/deploy/docker/run /usr/local/bin/
 
 
 ENV TZ=Asia/Shanghai
+ENV LUAROCKS_VERSION 3.9.2
 
 # alpine' cp、mv is a versiob of busybox，different from ubuntu, so install coreutils
 RUN cd /usr/bin \
@@ -19,6 +20,9 @@ RUN cd /usr/bin \
         vim \
         supervisor \
         curl \
+        luarocks \
+    && wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && tar -zxvf luarocks-${LUAROCKS_VERSION}.tar.gz && cd luarocks-${LUAROCKS_VERSION} && ./configure && make build && make install && rm -rf luarocks* \
+    && luarocks install lua-resty-template \
     && chmod +x /usr/local/bin/run \
     && chmod +x /usr/local/bin/nginx/conf_wapper
 

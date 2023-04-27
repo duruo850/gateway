@@ -65,6 +65,9 @@
 #### 实施步骤（略）
     1、安装OpenResty;  
     2、安装lua-resty-template; 
+        Install LuaRocks, the package manager for Lua modules. You can download the latest version from the LuaRocks website: https://luarocks.org/#quick-start
+        Use LuaRocks to install lua-resty-template by running the following command:
+        sudo luarocks install lua-resty-template
 # 存在问题
   1、nginx启动时，默认upstream要有相应的配置（即存储upstream信息的文件servers_test.conf至少要有一条记录，可随意填一个不存在的后台进程，只要nginx启动好后，nginx会去拉取etcd中的信息，然后更新到该文件中）；  
   2、后台节点都下线或者挂掉之后，查看nginx中的upstream信息（/upstream_list），会至少存在一个后台节点信息（备注：跟nginx的upstream配置有关，即至少需要存在一个节点信息。影响不大，因为后台进程都挂掉了，即使upstream里面还存在一个节点，请求也会失败）；  
