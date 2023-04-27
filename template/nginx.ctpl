@@ -1,0 +1,159 @@
+#user  nobody;
+worker_processes  16;
+
+error_log  /usr/local/openresty/nginx/logs/error.log warn;
+
+pid        /usr/local/openresty/nginx/logs/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    #access_log  /usr/local/openresty/nginx/logs/access.log  main;
+    access_log off;
+
+    include /usr/local/bin/nginx/conf.d/http/*.conf;
+
+    # circuit breaker init
+    lua_shared_dict fuse_shard_dict 10m;
+    init_worker_by_lua_block {
+        local cb = require "auth/circuit_breaker"
+        cb:setup(function(this)
+            this.REQUEST_TIMEOUT = 1
+            this.FUSED_DURATION = 10
+            this.FAILS_LIMIT = 10
+            this.LIFETIME = 15
+		end)
+	}
+
+    # limit req/conn define
+    limit_req_zone $binary_remote_addr zone=perip_rps:1m rate=50r/s;
+    limit_req_zone $server_name zone=perserver_rps:10m rate=1000r/s;
+    limit_conn_zone $binary_remote_addr zone=perip_conn:1m;
+    limit_conn_zone $server_name zone=perserver_conn:10m;
+
+    # proxy setting
+    proxy_buffering on; # Enables or disables buffering of responses from the proxied server.
+    proxy_buffer_size 32k; # Sets the size of the buffer used for reading the first part of the response received from the proxied server
+    proxy_buffers 32 32k; # Sets the number and size of the buffers used for reading a response from the proxied server
+    proxy_busy_buffers_size 64k; #（proxy_buffers*2） When buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read
+    proxy_temp_file_write_size 128k; # Limits the size of data written to a temporary file at a time
+
+    # 动态访问，需要授权token
+    server {
+        listen 80;
+        server_name  localhost;
+
+        #gzip  on;
+        charset utf-8;
+
+        # 上传文件最大20M
+        client_max_body_size 20m;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    
+        # lua_code_cache is off; this will hurt performance
+        #lua_code_cache off;
+        access_by_lua_file /usr/local/openresty/lualib/auth/auth.lua;
+
+        log_by_lua_block {
+            local cb = require "auth/circuit_breaker"
+            cb:run_log()
+        }
+       
+        location / {
+            root   /usr/local/openresty/nginx/html;
+            index  index.html index.htm;
+        }
+
+        # services
+        <% for i, svc in ipairs(services) do %>
+        location  /<%=  svc.name %> / {
+            limit_req zone=perip_rps burst=20 nodelay;
+            limit_req zone=perserver_rps burst=200 nodelay;
+            limit_conn perip_conn 10;
+            limit_conn perserver_conn 10000;
+            limit_rate 100k;
+            proxy_pass http://<%= svc.name %>.default.svc.cluster.local:<%= svc.port %>;
+        }
+        <% end %>
+    }
+
+    # 静态访问
+    server {
+        listen 663;
+        server_name  localhost;
+
+        #gzip  on;
+        charset utf-8;
+
+        # 上传文件最大20M
+        client_max_body_size 20m;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+
+        access_by_lua_block {
+            local cb = require "auth/circuit_breaker"
+            cb:run_access()
+        }
+
+
+        log_by_lua_block {
+            local cb = require "auth/circuit_breaker"
+            cb:run_log()
+        }
+
+        location / {
+            root   /usr/local/openresty/nginx/html;
+            index  index.html index.htm;
+        }
+
+        # services
+        <% for i, svc in ipairs(services) do %>
+        location  /<%=  svc.name %> / {
+            limit_req zone=perip_rps burst=20 nodelay;
+            limit_req zone=perserver_rps burst=200 nodelay;
+            limit_conn perip_conn 10;
+            limit_conn perserver_conn 10000;
+            limit_rate 100k;
+            proxy_pass http://<%= svc.name %>.default.svc.cluster.local:<%= svc.port %>;
+        }
+        <% end %>
+
+        # websocket service
+        location /ws {
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Host $http_host;
+            proxy_pass http://websocket.default.svc.cluster.local:9702;
+        }
+        {{end}}{{end}}
+
+    }
+
+    # 自动更新模板
+    lua_shared_dict myconfig 10m;
+    init_worker_by_lua_block {
+        local dynamic_servers = require "dynamic_servers.lua"
+        local last_modified = 0
+        while true do
+            dynamic_servers:dump2file()
+            ngx.sleep(60)
+        end
+    }
+}

@@ -6,6 +6,7 @@ ADD lua/auth /usr/local/openresty/lualib/auth
 ADD lua/http /usr/local/openresty/lualib/resty
 ADD supervisor/supervisord.conf /etc/
 ADD cicd/deploy/docker/run /usr/local/bin/
+ADD template /usr/local/bin/template/
 
 
 ENV TZ=Asia/Shanghai
