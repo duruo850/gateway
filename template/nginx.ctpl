@@ -32,6 +32,14 @@ http {
             this.FAILS_LIMIT = 10
             this.LIFETIME = 15
 		end)
+
+	    # 自动更新模板
+		local dynamic_servers = require "auth/dynamic_servers"
+        local last_modified = 0
+        while true do
+            dynamic_servers:dump2file()
+            ngx.sleep(60)
+        end
 	}
 
     # limit req/conn define
@@ -144,16 +152,5 @@ http {
         }
         {{end}}{{end}}
 
-    }
-
-    # 自动更新模板
-    lua_shared_dict myconfig 10m;
-    init_worker_by_lua_block {
-        local dynamic_servers = require "dynamic_servers.lua"
-        local last_modified = 0
-        while true do
-            dynamic_servers:dump2file()
-            ngx.sleep(60)
-        end
     }
 }
