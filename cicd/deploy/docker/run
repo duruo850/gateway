@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+
+init() {
+    /usr/local/bin/nginx/conf_wapper
+
+    # 设置3：11分定时重启openresty
+    echo "11 3    * * *   root    /usr/local/openresty/bin/openresty -s reload" >> /etc/crontab
+}
+
+if [ ! -f "/tmp/is_init" ]; then
+  touch /tmp/is_init
+  init
+fi
+
+exec supervisord -n

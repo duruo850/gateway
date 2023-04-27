@@ -1,0 +1,28 @@
+#1 k8s基础框架部署
+
+#2 ingress-nginx第三方负载均衡框架部署
+
+#3 资源准备
+/var/app/mage-utils
+
+
+#4 编译镜像
+prj_path=/var/app/
+cd $prj_path
+docker build -t omp:1.0.0 -f $prj_path/gateway/cicd/deploy/docker/Dockerfile .
+
+
+#5 部署pods
+kubectl apply -f $prj_path/mage-omp/gateway/deploy/k8s/deployment.yaml
+
+#6 部署service
+kubectl apply -f $prj_path/mage-omp/gateway/deploy/k8s/service.yaml
+
+#7 创建secret
+
+
+#8 部署ingress,对外开放
+kubectl apply -f $prj_path/mage-omp/gateway/deploy/k8s/ingress.yaml
+
+#8 访问ingress对外开放的端口+/omp即可
+由于ingress controller采用的是nodeport的方式访问的，同时端口是30080，所以访问http://外网ip:30080/omp就可以访问内网的omp服务的8001端口

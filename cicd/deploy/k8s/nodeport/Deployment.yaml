@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      enableServiceLinks: true
+      containers:
+        - name: gateway
+          image: duruo850/gateway:3.0.0
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/nginx.conf.gen
+            initialDelaySeconds: 30       # 开启等待30s再就绪状态检测
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/nginx.conf.gen
+            initialDelaySeconds: 30       # 开启等待30s再就判断是否存活
+          volumeMounts:
+            - mountPath: /usr/local/openresty/nginx/cert/key.pem
+              name: ssl-key
+            - mountPath: /usr/local/openresty/nginx/cert/primary.pem
+              name: ssl-primary
+            - mountPath: /usr/local/bin/consul_template/nginx.ctpl
+              name: nginx-ctpl
+            - mountPath: /usr/local/bin/consul_template/nginx_https.ctpl
+              name: nginx-https-ctpl
+            - mountPath: /usr/local/bin/nginx/conf.d
+              name: nginx-confd-path
+      volumes:
+        - hostPath:
+            path: /etc/letsencrypt_test2.magefitness.com/live/test2.magefitness.com/privkey.pem
+          name: ssl-key
+        - hostPath:
+            path: /etc/letsencrypt_test2.magefitness.com/live/test2.magefitness.com/fullchain.pem
+          name: ssl-primary
+        - hostPath:
+            path: /home/zfswalk/program/docker_service/gateway/consul_template/nginx.ctpl
+            type: File
+          name: nginx-ctpl
+        - hostPath:
+            path: /home/zfswalk/program/docker_service/gateway/consul_template/nginx_https.ctpl
+            type: File
+          name: nginx-https-ctpl
+        - hostPath:
+            path: /home/zfswalk/program/docker_service/gateway/nginx/conf.d
+            type: Directory
+          name: nginx-confd-path

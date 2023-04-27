@@ -1,0 +1,11 @@
+#!/bin/sh
+
+
+if [ -f "/usr/local/openresty/nginx/cert/key.pem" ]; then
+    cp -rf /usr/local/bin/nginx/nginx_https.conf /usr/local/openresty/nginx/conf/nginx.conf
+    cp -rf /usr/local/bin/consul_template/nginx_https.ctpl  /usr/local/bin/consul_template/nginx.ctpl
+else
+    cp -rf /usr/local/bin/nginx/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+fi
+
+
