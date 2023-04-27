@@ -19,12 +19,7 @@ RUN cd /usr/bin \
         vim \
         supervisor \
         curl \
-    && curl -fSL https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip -o consul-template.zip \
-    && unzip consul-template.zip \
-    && rm -rf consul-template.zip \
-    && chmod +x consul-template \
     && chmod +x /usr/local/bin/run \
-    && chmod +x /usr/local/bin/consul_template/consul_handler \
     && chmod +x /usr/local/bin/nginx/conf_wapper
 
 EXPOSE 80
