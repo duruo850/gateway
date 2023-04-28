@@ -43,6 +43,9 @@ class NginxConfGenerator:
     def current_services(self):
         return self.k8s_client.list_namespaced_service(self.namespace).items
 
+    def current_pods(self):
+        return self.k8s_client.list_namespaced_pod(self.namespace).items
+
     def watch(self):
         # 监听Kubernetes Service的变化
         w = watch.Watch()
@@ -54,4 +57,29 @@ class NginxConfGenerator:
 
 
 if __name__ == "__main__":
-    NginxConfGenerator("nginx.ctpl", "nginx.conf").watch()
+    ncg = NginxConfGenerator("nginx.ctpl", "nginx.conf")
+    pods = ncg.current_pods()
+
+    service_pods = {}
+    for pod in pods:
+        containers = pod.spec.containers
+
+        # 输出每个容器的端口信息
+        for container in containers:
+
+            ...
+            todo
+            如何获取pod
+            ip
+            print(f"Ports for container {container.name} namespace: ")
+
+            if container.ports is None:
+                continue
+
+            spod = service_pods.setdefault(container.name, [])
+            for port in container.ports:
+                print(f"- name: {port.name}, container port: {port.container_port}, protocol: {port.protocol}")
+                spod.append(port.container_port)
+
+    print(service_pods)
+    ncg.watch()
