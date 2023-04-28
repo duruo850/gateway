@@ -11,16 +11,15 @@ ADD template /usr/local/bin/template/
 
 ENV TZ=Asia/Shanghai
 ENV LUAROCKS_VERSION 3.9.2
+ENV KUBERNETES_VERSION 26.1.0
+ENV JINJA2_VERSION 3.0.3
 
 # alpine' cp、mv is a versiob of busybox，different from ubuntu, so install coreutils
 RUN cd /usr/bin \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        cron \
-        vim \
-        supervisor \
-        curl \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y cron vim supervisor curl python3-pip \
+    && pip3 install kubernetes==${KUBERNETES_VERSION} && pip3 install jinja2=={JINJA2_VERSION} \
     && wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && tar -zxvf luarocks-${LUAROCKS_VERSION}.tar.gz && cd luarocks-${LUAROCKS_VERSION} && ./configure && make build && make install && rm -rf luarocks* \
     && luarocks install lua-resty-template \
     && chmod +x /usr/local/bin/run \
