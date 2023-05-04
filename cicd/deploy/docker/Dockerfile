@@ -20,8 +20,6 @@ RUN cd /usr/bin \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y cron vim supervisor curl python3-pip \
     && pip3 install kubernetes==${KUBERNETES_VERSION} && pip3 install jinja2==${JINJA2_VERSION} \
-    && wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && tar -zxvf luarocks-${LUAROCKS_VERSION}.tar.gz && cd luarocks-${LUAROCKS_VERSION} && ./configure && make build && make install && rm -rf luarocks* \
-    && luarocks install lua-resty-template \
     && chmod +x /usr/local/bin/run \
     && chmod +x /usr/local/bin/nginx/conf_wapper
 
