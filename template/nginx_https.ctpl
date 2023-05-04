@@ -85,17 +85,16 @@ http {
         }
 
         # services
-        #判断tags是否是public{{range .Tags}}{{if eq . "public" }}{{end}}{{end}}
-        {{range services}}{{$service:=.Name}}{{if and (service $service "passing") (not ($service |regexMatch "consul*")) (not ($service |regexMatch "nginx*"))  (not ($service |regexMatch "gateway*")) (not ($service |regexMatch "redis*")) (not ($service |regexMatch "mysql*")) (not ($service |regexMatch "rabbitmq*"))  (not ($service |regexMatch "visualizer*"))  (not ($service |regexMatch "mqtt*"))  (not ($service |regexMatch "emq*"))  (not ($service |regexMatch "prometheus*"))  (not ($service |regexMatch "stats*"))  (not ($service |regexMatch "python*")) }}
-        location  /{{$service}}/ {
+        {% for svc in services %}
+        location  /{{svc}}/ {
             limit_req zone=perip_rps burst=20 nodelay;
             limit_req zone=perserver_rps burst=200 nodelay;
             limit_conn perip_conn 10;
             limit_conn perserver_conn 10000;
             limit_rate 100k;
-            proxy_pass http://{{$service}};
+            proxy_pass http://{{svc}};
         }
-        {{end}}{{end}}
+        {% endfor %}
     }
 
     # 静态访问
@@ -137,20 +136,18 @@ http {
         }
 
         # services
-        #判断tags是否是public{{range .Tags}}{{if eq . "public" }}{{end}}{{end}}
-        {{range services}}{{$service:=.Name}}{{if and (service $service "passing") (not ($service |regexMatch "consul*")) (not ($service |regexMatch "nginx*"))  (not ($service |regexMatch "gateway*")) (not ($service |regexMatch "redis*")) (not ($service |regexMatch "mysql*")) (not ($service |regexMatch "rabbitmq*"))  (not ($service |regexMatch "visualizer*"))  (not ($service |regexMatch "mqtt*"))  (not ($service |regexMatch "emq*"))  (not ($service |regexMatch "prometheus*"))  (not ($service |regexMatch "stats*"))  (not ($service |regexMatch "python*")) }}
-        location  /{{$service}}/ {
+        {% for svc in services %}
+        location  /{{svc}}/ {
             limit_req zone=perip_rps burst=20 nodelay;
             limit_req zone=perserver_rps burst=200 nodelay;
             limit_conn perip_conn 10;
             limit_conn perserver_conn 10000;
             limit_rate 100k;
-            proxy_pass http://{{$service}};
+            proxy_pass http://{{svc}};
         }
-        {{end}}{{end}}
+        {% endfor %}
 
         # websocket service
-        {{range services}}{{$service:=.Name}}{{if and (service $service "passing") ($service |regexMatch "websocket*") }}
         location /ws {
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -159,26 +156,22 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Host $http_host;
-            proxy_pass http://{{$service}}_ws/ws;
-
+            proxy_pass http://websocket_ws;
         }
         {{end}}{{end}}
 
     }
 
     # Upstreams
-    {{range services}}{{$service:=.Name}}{{if and (service $service "passing") (not ($service |regexMatch "consul*")) (not ($service |regexMatch "nginx*"))  (not ($service |regexMatch "gateway*")) (not ($service |regexMatch "redis*")) (not ($service |regexMatch "mysql*")) (not ($service |regexMatch "rabbitmq*"))  (not ($service |regexMatch "visualizer*"))  (not ($service |regexMatch "mqtt*"))  (not ($service |regexMatch "emq*"))  (not ($service |regexMatch "grafana*")) (not ($service |regexMatch "prometheus*")) (not ($service |regexMatch "stats*"))  (not ($service |regexMatch "python*")) }}
-    upstream {{$service}} { {{range service $service }}
-        server {{.Address}}:{{.Port}};{{end}}
-    }
-    {{end}}{{end}}
+    {% for svc in services %}
+    upstream {{svc}} {
+    {% for spods in service_pods[svc] %}    server {{ spods['pod_ip'] }}:{{ spods['port'] }};
+    {% endfor %}}
+    {% endfor %}
 
-    # Upstreams-websocket, 每个请求按客户端IP的hash结果分配，当新的请求到达时，先将其客户端IP通过哈希算法哈希出一个值，在随后的客户端请求中，客户IP的哈希值只要相同，就会被分配至同一台服务器，该调度算法可以解决动态网页的session共享问题，但有时会导致请求分配不均，即无法保证1：1的负载均衡，因为在国内大多数公司都是NAT上网模式，多个客户端会对应一个外部IP，所以，这些客户端都会被分配到同一节点服务器，从而导致请求分配不均。
-    {{range services}}{{$service:=.Name}}{{if and (service $service "passing") ($service |regexMatch "websocket*") }}
-    upstream {{$service}}_ws {
+
+    upstream websocket_ws {
         ip_hash;
-        {{range service $service }}
-        server {{.Address}}:{{.Port}};{{end}}
-    }
-    {{end}}{{end}}
+    {% for spods in service_pods['websocket'] %}    server {{ spods['pod_ip'] }}:{{ spods['port'] }};
+    {% endfor %}}
 }

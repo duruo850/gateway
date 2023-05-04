@@ -32,8 +32,10 @@ class NginxConfGenerator:
         定义更新nginx.conf文件的函数
         :return:
         """
+        service_pods = self.current_service_pods()
         # 渲染nginx.conf模板
-        nginx_conf = self._nginx_ctpl_template.render(services=self.current_services())
+        nginx_conf = self._nginx_ctpl_template.render(
+            services=list(service_pods.keys()), service_pods=service_pods)
 
         # 将nginx.conf文件写入磁盘
         with open(self._nginx_conf_path, "w") as f:
@@ -42,6 +44,34 @@ class NginxConfGenerator:
 
     def current_services(self):
         return self.k8s_client.list_namespaced_service(self.namespace).items
+
+    def current_pods(self) -> list:
+        return self.k8s_client.list_namespaced_pod(self.namespace).items
+
+    def current_service_pods(self) -> {str: {}}:
+        service_pods = {}
+        for pod in self.current_pods():
+            service = pod.metadata.labels.get('app', None)
+            if service is None:
+                continue
+
+            spod = []
+
+            # 输出每个容器的端口信息
+            for container in pod.spec.containers:
+                if container.name == 'istio-proxy':
+                    continue
+
+                # 如果容器不指定端口，则无法获取端口信息
+                if container.ports is None:
+                    continue
+
+                for port in container.ports:
+                    spod.append({"pod_ip": pod.status.pod_ip, "port": port.container_port})
+
+            if len(spod) > 0:
+                service_pods.setdefault(service, []).extend(spod)
+        return service_pods
 
     def watch(self):
         # 监听Kubernetes Service的变化
@@ -54,4 +84,5 @@ class NginxConfGenerator:
 
 
 if __name__ == "__main__":
-    NginxConfGenerator("nginx.ctpl", "nginx.conf").watch()
+    ncg = NginxConfGenerator("nginx.ctpl", "nginx.conf")
+    ncg.watch()

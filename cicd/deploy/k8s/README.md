@@ -28,3 +28,10 @@
    给默认的default的serviceaccount账号创建一个view的角色：
 
         kubectl create clusterrolebinding default-crb --clusterrole=view --serviceaccount=default:default
+        
+        
+# 网关机制
+    
+    通过获取service， service对应的pod，直接生成upstream方式，
+    
+    也可以使用service直接走k8s的dns功能，坏处是速度肯定慢一些。
